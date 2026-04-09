@@ -298,6 +298,19 @@ class StreamingExecutor(Executor, threading.Thread):
             for op in self._topology.keys():
                 op.shutdown(timer, force=force)
 
+            # Clear all queues to release ObjectRef references pinning object
+            # store memory. Without this, blocks buffered in operator-internal
+            # queues (e.g., OutputSplitter._buffer) and OpState output queues
+            # survive until the executor is garbage-collected, causing lingering
+            # object store memory between epochs in streaming_split().
+            for op, state in self._topology.items():
+                if isinstance(op, InternalQueueOperatorMixin):
+                    op.clear_internal_input_queue()
+                    op.clear_internal_output_queue()
+                state.output_queue.clear()
+                for inqueue in state.input_queues:
+                    inqueue.clear()
+
             min_ = round(timer.min(), 3)
             max_ = round(timer.max(), 3)
             total = round(timer.get(), 3)
