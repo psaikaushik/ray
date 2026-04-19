@@ -185,8 +185,7 @@ class _ModelMultiplexWrapper:
 
         if model_id in self.models:
             # Move the model to the end of the OrderedDict to ensure LRU caching.
-            model = self.models.pop(model_id)
-            self.models[model_id] = model
+            self.models.move_to_end(model_id)
             return self.models[model_id]
         else:
             # Set the flag to push the multiplexed replica info to the controller
